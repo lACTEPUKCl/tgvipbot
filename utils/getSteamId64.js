@@ -19,7 +19,6 @@ async function getSteamId64(steamApi, content) {
       return false;
     }
   }
-
   if (steamID64) {
     return steamID64;
   }
