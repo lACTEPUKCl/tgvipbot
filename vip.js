@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
-import getSteamId64 from "./utils/getSteamID64.js";
+import getSteamid from "./utils/getSteamid.js";
 import vipCreater from "./utils/vipCreater.js";
 import fs from "fs";
 dotenv.config();
@@ -191,7 +191,7 @@ bot.on("message", async (msg) => {
   if (!mode) return;
 
   const input = msg.text.trim();
-  const steamid = await getSteamId64(process.env.STEAM_API_KEY, input);
+  const steamid = await getSteamid(process.env.STEAM_API_KEY, input);
 
   if (!steamid) {
     return bot.sendMessage(
