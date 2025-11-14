@@ -142,42 +142,34 @@ bot.on("callback_query", async (query) => {
     const user = await steamCollection.findOne({
       telegramid: chatId.toString(),
     });
+
     if (!user || !user._id) {
       return bot.sendMessage(chatId, "Вы ещё не привязали SteamID!");
     }
-    const steamID = user._id;
 
-    let file;
+    const { _id: steamID, vipEndDate } = user;
 
-    try {
-      file = fs.readFileSync(
-        process.env.ADMINS_CFG_PATH || "./Admins.cfg",
-        "utf-8"
-      );
-    } catch (e) {
-      return bot.sendMessage(chatId, "Ошибка доступа к файлу Admins.cfg");
-    }
-    const regexp = new RegExp(
-      `Admin=${steamID}:Reserved [//]* DiscordID [0-9]+ do (?<date>[0-9]{2}\\.[0-9]{2}\\.[0-9]{4})`
-    );
-    const found = file.match(regexp);
-
-    if (!found || !found.groups || !found.groups.date) {
-      return bot.sendMessage(chatId, "VIP не найден или истёк.");
+    if (!(vipEndDate instanceof Date)) {
+      return bot.sendMessage(chatId, "VIP не найден или срок действия истёк.");
     }
 
-    const date = found.groups.date;
-    const today = new Date();
-    const [dd, mm, yyyy] = date.split(".");
-    const vipUntil = new Date(`${yyyy}-${mm}-${dd}T23:59:59Z`);
-    const daysLeft = Math.max(
-      0,
-      Math.ceil((vipUntil - today) / (1000 * 60 * 60 * 24))
-    );
+    const now = new Date();
+    if (vipEndDate <= now) {
+      return bot.sendMessage(chatId, "Срок действия VIP истёк.");
+    }
 
-    let text = `✅ Ваш VIP активен до ${date}`;
-    if (daysLeft > 0) text += `\n⏳ Осталось дней: ${daysLeft}`;
-    else text = "Срок действия VIP истёк.";
+    const msLeft = vipEndDate.getTime() - now.getTime();
+    const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+
+    const dd = String(vipEndDate.getDate()).padStart(2, "0");
+    const mm = String(vipEndDate.getMonth() + 1).padStart(2, "0");
+    const yyyy = vipEndDate.getFullYear();
+    const dateStr = `${dd}.${mm}.${yyyy}`;
+
+    let text = `✅ Ваш VIP активен до ${dateStr}`;
+    if (daysLeft > 0) {
+      text += `\n⏳ Осталось дней: ${daysLeft}`;
+    }
 
     return bot.sendMessage(chatId, text);
   }
@@ -234,13 +226,14 @@ bot.on("message", async (msg) => {
         } бонусных баллов для получения VIP статуса.`
       );
     }
+
     await steamCollection.updateOne(
       { _id: steamid },
       {
         $inc: { bonuses: -15000 },
-        $set: { "vip.active": true, "vip.date": new Date() },
       }
     );
+
     await vipCreater(steamid, name || steamid, 30, chatId);
 
     return bot.sendMessage(
