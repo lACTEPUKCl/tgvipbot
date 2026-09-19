@@ -6,7 +6,11 @@ import vipCreater from "./utils/vipCreater.js";
 import fs from "fs";
 dotenv.config();
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(process.env.BOT_TOKEN, {
+  polling: { interval: 1500, params: { timeout: 20 } },
+  request: { proxy: process.env.TELEGRAM_PROXY_URL || process.env.DISCORD_PROXY_URL, timeout: 30000 },
+});
+bot.on('polling_error', error => console.warn('[Telegram] polling: ' + (error.code || error.name)));
 const mongo = new MongoClient(process.env.MONGO_URL);
 
 let steamCollection;
@@ -55,6 +59,7 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 bot.on("callback_query", async (query) => {
+  await bot.answerCallbackQuery(query.id).catch(error => console.warn('[Telegram] callback: ' + (error.code || error.name)));
   const chatId = query.message.chat.id;
 
   if (query.data === "donate") {
