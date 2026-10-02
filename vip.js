@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import getSteamid from "./utils/getSteamid.js";
 import vipCreater from "./utils/vipCreater.js";
 import fs from "fs";
+import { prepareDonationLink } from "./utils/donationLinkAudit.js";
 dotenv.config();
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, {
@@ -44,6 +45,19 @@ const vipText = `
   console.log("MongoDB connected");
 })();
 
+async function sendDonationLink(chatId, actorId, steamId) {
+  try {
+    const prepared = await prepareDonationLink(mongo.db("SquadJS"), { platform: "telegram", actorId, steamId, configuredUrl: process.env.DONATION_LINK });
+    await bot.sendMessage(chatId, `Ваш SteamID: ${steamId}\nСкопируйте его. На DonatePay полностью очистите поле «Сообщение стримеру» и вставьте этот SteamID. Перед оплатой проверьте: в поле должен быть только ваш ID. Сайт может показывать чужой ID — не оставляйте его.`, {
+      reply_markup: { inline_keyboard: [[{ text: "Оформить донат", url: prepared.url }]] }
+    });
+    await prepared.delivered();
+  } catch (error) {
+    console.warn('[donation-link] Failed to prepare or deliver audited link');
+    await bot.sendMessage(chatId, 'Не удалось подготовить ссылку на донат. Попробуйте позже.');
+  }
+}
+
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   await bot.sendMessage(chatId, vipText, { parse_mode: "HTML" });
@@ -63,20 +77,12 @@ bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
 
   if (query.data === "donate") {
+    if (query.message.chat.type !== "private") return bot.sendMessage(chatId, "Для оформления доната откройте личный чат с ботом.");
     const user = await steamCollection.findOne({
       telegramid: chatId.toString(),
     });
     if (user && user._id) {
-      const link = `${process.env.DONATION_LINK}${user._id}`;
-      return bot.sendMessage(
-        chatId,
-        "Для оформления доната нажмите кнопку ниже:",
-        {
-          reply_markup: {
-            inline_keyboard: [[{ text: "💳 Оформить донат", url: link }]],
-          },
-        }
-      );
+      return sendDonationLink(chatId, query.from.id, user._id);
     } else {
       waitForSteam.set(chatId, "donate");
       return bot.sendMessage(
@@ -213,12 +219,7 @@ bot.on("message", async (msg) => {
   waitForSteam.delete(chatId);
 
   if (mode === "donate") {
-    const link = `${process.env.DONATION_LINK}${steamid}`;
-    return bot.sendMessage(
-      chatId,
-      `✅ Привязка прошла успешно!\n\nОформить донат: [НАЖМИ СЮДА](${link})`,
-      { parse_mode: "Markdown", disable_web_page_preview: true }
-    );
+    return sendDonationLink(chatId, msg.from.id, steamid);
   }
   if (mode === "bonus") {
     const dbUser = await steamCollection.findOne({ _id: steamid });
