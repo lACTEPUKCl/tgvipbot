@@ -99,8 +99,12 @@ export function createStarsPayments(db) {
     const pending = await orders.find({ status: { $in: ['invoice', 'paid'] }, chargeId: { $exists: true } })
       .sort({ createdAt: 1 }).limit(50).toArray();
     for (const order of pending) {
-      await orders.updateOne({ _id: order._id, status: 'invoice' }, { $set: { status: 'paid' } }, durable);
-      await fulfill({ ...order, status: 'paid' });
+      try {
+        await orders.updateOne({ _id: order._id, status: 'invoice' }, { $set: { status: 'paid' } }, durable);
+        await fulfill({ ...order, status: 'paid' });
+      } catch (error) {
+        console.warn('[Stars] grant remains pending', error.code || error.name);
+      }
     }
   }
   return { init, createOrder, accept, checkout, paid, retry, orders, players, payload: order => PREFIX + order._id };

@@ -108,7 +108,7 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     try {
       await payments.retry();
       const unnotified = await payments.orders.find({ status: 'fulfilled', notifiedAt: { $exists: false } }).limit(50).toArray();
-      for (const order of unnotified) await notify(order);
+      for (const order of unnotified) await safe(notify)(order);
       // Recover successful payments even if polling acknowledged the update
       // immediately before a crash. Only our persisted invoice payloads count.
       const open = await payments.orders.find({ status: 'invoice' }).project({ _id: 1, createdAt: 1 }).sort({ createdAt: 1 }).limit(1).toArray();
@@ -120,7 +120,7 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
           const source = transaction.source;
           if (source?.type !== 'user' || source.transaction_type !== 'invoice_payment'
             || !source.invoice_payload?.startsWith('rns-stars:')) continue;
-          await payments.paid({ currency: 'XTR', total_amount: transaction.amount,
+          await safe(payments.paid)({ currency: 'XTR', total_amount: transaction.amount,
             invoice_payload: source.invoice_payload, telegram_payment_charge_id: transaction.id }, source.user.id);
         }
         if (page.transactions.length < 100 || page.transactions.at(-1).date < oldest) break;
