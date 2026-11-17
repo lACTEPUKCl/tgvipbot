@@ -1,7 +1,6 @@
 import { createStarsPayments, durationLabel, validSteamId } from './starsPayments.js';
 
 const SUPPORT = 'https://discord.gg/rn-server';
-const SUPPORT_TEXT = 'Поддержите Русский Народный Сервер ⭐\n\nВы можете добровольно поддержать работу и развитие наших игровых серверов любой суммой.\n\nСпасибо всем, кто помогает проекту оставаться доступным для игроков!';
 const TERMS = 'Поддержка Русского Народного Сервера\n\nВ благодарность за поддержку начисляется VIP. 280 ⭐ поддержки — 30 дней VIP. Срок пропорционален сумме, остаток времени сохраняется. Действующий VIP продлевается с даты окончания.\n\nПеред переводом проверьте SteamID. VIP получит указанный аккаунт. После подтверждения перевода VIP начисляется автоматически, синхронизация с серверами обычно занимает до минуты.\n\nПо вопросам переводов и возврата используйте /paysupport. Поддержка Telegram не обслуживает покупки этого бота.';
 
 export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
@@ -14,7 +13,7 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
   });
   async function chooseAmount(chatId, steamId) {
     waiting.set(chatId, { mode: 'amount', steamId });
-    await bot.sendMessage(chatId, `${SUPPORT_TEXT}\n\nSteamID получателя: ${steamId}\nВ благодарность за 280 ⭐ поддержки начисляется 30 дней VIP.\n\nВыберите сумму или отправьте другое целое число звёзд.`, {
+    await bot.sendMessage(chatId, `Поддержка звёздами ⭐\n\nSteamID: ${steamId}\n\nВыберите сумму или отправьте другое целое число звёзд.`, {
       reply_markup: { inline_keyboard: [
         [280, 560, 840].map(amount => ({ text: `${amount} ⭐`, callback_data: `stars_amount:${steamId}:${amount}` })),
         [{ text: 'Другой SteamID', callback_data: 'stars_steam' }],
@@ -27,7 +26,7 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     const rows = await payments.players.find({ telegramid: String(msg.from.id) }).project({ _id: 1 }).limit(2).toArray();
     if (rows.length === 1 && validSteamId(rows[0]._id)) return chooseAmount(msg.chat.id, rows[0]._id);
     waiting.set(msg.chat.id, { mode: 'steam' });
-    await bot.sendMessage(msg.chat.id, `${SUPPORT_TEXT}\n\nОтправьте SteamID64 получателя VIP — 17 цифр. Перед переводом его можно будет проверить.`);
+    await bot.sendMessage(msg.chat.id, 'Отправьте SteamID64 — 17 цифр. Перед переводом его можно будет проверить.');
   }
   async function confirm(chatId, steamId, amount) {
     const order = await payments.createOrder(chatId, steamId, amount);

@@ -25,13 +25,6 @@ const vipText = `
 
 Спасибо всем, кто помогает проекту оставаться доступным для игроков!
 
-В благодарность за поддержку начисляется <b>VIP</b> на наших игровых серверах.
-• <b>300 ₽ поддержки — 30 дней VIP.</b> Действующий срок продлевается.
-• <b>2000 ₽ поддержки — клановый VIP на месяц</b>, до 30 человек в клане.
-
-<b>Бонусная система:</b>
-• 1 балл — 1 минута на обычной карте, 2 балла — 1 минута на seed-карте.
-• 15000 баллов = VIP на месяц (команда !bonus в игре).
 `;
 
 await mongo.connect();
@@ -54,12 +47,12 @@ async function sendDonationLink(chatId, actorId, steamId) {
 
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  await bot.sendMessage(chatId, vipText, { parse_mode: "HTML" });
-  await bot.sendMessage(chatId, "Выберите действие:", {
+  await bot.sendMessage(chatId, vipText, {
+    parse_mode: "HTML",
     reply_markup: {
       inline_keyboard: [
         [{ text: "Поддержать проект ⭐", callback_data: "stars_vip" }],
-        [{ text: "Поддержать проект", callback_data: "donate" }],
+        [{ text: "Поддержать через DonatePay", callback_data: "donate" }],
         [{ text: "🎁 VIP за бонусные баллы", callback_data: "bonus" }],
         [{ text: "🧐 Проверить VIP", callback_data: "check_vip" }],
       ],
