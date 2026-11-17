@@ -5,10 +5,11 @@ import getSteamid from "./utils/getSteamid.js";
 import vipCreater from "./utils/vipCreater.js";
 import fs from "fs";
 import { prepareDonationLink } from "./utils/donationLinkAudit.js";
+import { installStarsBot } from "./utils/starsBot.js";
 dotenv.config();
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, {
-  polling: { interval: 1500, params: { timeout: 20 } },
+  polling: { autoStart: false, interval: 1500, params: { timeout: 20 } },
   request: { proxy: process.env.TELEGRAM_PROXY_URL || process.env.DISCORD_PROXY_URL, timeout: 30000 },
 });
 bot.on('polling_error', error => console.warn('[Telegram] polling: ' + (error.code || error.name)));
@@ -39,11 +40,10 @@ const vipText = `
 • 15000 баллов = VIP на месяц (команда !bonus в игре).
 `;
 
-(async () => {
-  await mongo.connect();
-  steamCollection = mongo.db("SquadJS").collection("mainstats");
-  console.log("MongoDB connected");
-})();
+await mongo.connect();
+steamCollection = mongo.db("SquadJS").collection("mainstats");
+await installStarsBot(bot, mongo.db("SquadJS"), { onBegin: chatId => waitForSteam.delete(chatId) });
+console.log("MongoDB connected; Stars payments ready");
 
 async function sendDonationLink(chatId, actorId, steamId) {
   try {
@@ -64,6 +64,7 @@ bot.onText(/\/start/, async (msg) => {
   await bot.sendMessage(chatId, "Выберите действие:", {
     reply_markup: {
       inline_keyboard: [
+        [{ text: "⭐ VIP за звёзды · 280 ⭐ / 30 дней", callback_data: "stars_vip" }],
         [{ text: "💎 VIP статус за донат", callback_data: "donate" }],
         [{ text: "🎁 VIP за бонусные баллы", callback_data: "bonus" }],
         [{ text: "🧐 Проверить VIP", callback_data: "check_vip" }],
@@ -74,7 +75,9 @@ bot.onText(/\/start/, async (msg) => {
 
 bot.on("callback_query", async (query) => {
   await bot.answerCallbackQuery(query.id).catch(error => console.warn('[Telegram] callback: ' + (error.code || error.name)));
-  const chatId = query.message.chat.id;
+  const chatId = query.message?.chat?.id;
+  if (!chatId) return;
+  if (query.data?.startsWith('stars_')) { waitForSteam.delete(chatId); return; }
 
   if (query.data === "donate") {
     if (query.message.chat.type !== "private") return bot.sendMessage(chatId, "Для оформления доната откройте личный чат с ботом.");
@@ -250,3 +253,4 @@ bot.on("message", async (msg) => {
 });
 
 console.log("VIP-бот запущен! node-telegram-bot-api");
+bot.startPolling().catch(error => console.warn('[Telegram] start polling: ' + (error.code || error.name)));
