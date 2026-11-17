@@ -48,7 +48,7 @@ test('Telegram private-chat purchase flow uses the chosen SteamID, amount and re
     await handlers.get('successful_payment')({ from, chat, successful_payment: payment });
     assert.equal(messages.length, count);
     assert.deepEqual((await service.players.findOne({ _id: '76561198000000002' })).vipEndDate, expiry);
-    assert.match(messages.at(-1)[1], /Добавлено 45 дн/);
+    assert.match(messages.at(-1)[1], /добавлено 45 дн/);
   } finally {
     await db.dropDatabase();
     await client.close();

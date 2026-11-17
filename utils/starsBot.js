@@ -1,7 +1,8 @@
 import { createStarsPayments, durationLabel, validSteamId } from './starsPayments.js';
 
 const SUPPORT = 'https://discord.gg/rn-server';
-const TERMS = 'VIP за Telegram Stars\n\n280 ⭐ = 30 дней. Срок пропорционален сумме, остаток времени сохраняется. Действующий VIP продлевается с даты окончания.\n\nПеред оплатой проверьте SteamID. VIP получит указанный аккаунт. После подтверждения оплаты VIP начисляется автоматически, синхронизация с серверами обычно занимает до минуты.\n\nПо вопросам оплаты и возврата используйте /paysupport. Поддержка Telegram не обслуживает покупки этого бота.';
+const SUPPORT_TEXT = 'Поддержите Русский Народный Сервер ⭐\n\nВы можете добровольно поддержать работу и развитие наших игровых серверов любой суммой.\n\nСпасибо всем, кто помогает проекту оставаться доступным для игроков!';
+const TERMS = 'Поддержка Русского Народного Сервера\n\nВ благодарность за поддержку начисляется VIP. 280 ⭐ поддержки — 30 дней VIP. Срок пропорционален сумме, остаток времени сохраняется. Действующий VIP продлевается с даты окончания.\n\nПеред переводом проверьте SteamID. VIP получит указанный аккаунт. После подтверждения перевода VIP начисляется автоматически, синхронизация с серверами обычно занимает до минуты.\n\nПо вопросам переводов и возврата используйте /paysupport. Поддержка Telegram не обслуживает покупки этого бота.';
 
 export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
   const payments = createStarsPayments(db);
@@ -13,7 +14,7 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
   });
   async function chooseAmount(chatId, steamId) {
     waiting.set(chatId, { mode: 'amount', steamId });
-    await bot.sendMessage(chatId, `SteamID получателя: ${steamId}\n\n280 ⭐ = 30 дней VIP. Выберите сумму или отправьте другое целое число звёзд.`, {
+    await bot.sendMessage(chatId, `${SUPPORT_TEXT}\n\nSteamID получателя: ${steamId}\nВ благодарность за 280 ⭐ поддержки начисляется 30 дней VIP.\n\nВыберите сумму или отправьте другое целое число звёзд.`, {
       reply_markup: { inline_keyboard: [
         [280, 560, 840].map(amount => ({ text: `${amount} ⭐`, callback_data: `stars_amount:${steamId}:${amount}` })),
         [{ text: 'Другой SteamID', callback_data: 'stars_steam' }],
@@ -26,13 +27,13 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     const rows = await payments.players.find({ telegramid: String(msg.from.id) }).project({ _id: 1 }).limit(2).toArray();
     if (rows.length === 1 && validSteamId(rows[0]._id)) return chooseAmount(msg.chat.id, rows[0]._id);
     waiting.set(msg.chat.id, { mode: 'steam' });
-    await bot.sendMessage(msg.chat.id, 'Отправьте SteamID64 получателя VIP — 17 цифр. Перед оплатой его можно будет проверить.');
+    await bot.sendMessage(msg.chat.id, `${SUPPORT_TEXT}\n\nОтправьте SteamID64 получателя VIP — 17 цифр. Перед переводом его можно будет проверить.`);
   }
   async function confirm(chatId, steamId, amount) {
     const order = await payments.createOrder(chatId, steamId, amount);
     waiting.delete(chatId);
     await bot.sendMessage(chatId, `Проверьте SteamID: ${steamId}\nСумма: ${amount} ⭐\nСрок VIP: ${durationLabel(order.durationMs)}\n\n${TERMS}`, {
-      reply_markup: { inline_keyboard: [[{ text: 'Согласен с условиями · Перейти к оплате', callback_data: `stars_pay:${order._id}` }],
+      reply_markup: { inline_keyboard: [[{ text: 'Согласен с условиями · Поддержать ⭐', callback_data: `stars_pay:${order._id}` }],
         [{ text: 'Изменить данные', callback_data: 'stars_vip' }]] },
     });
   }
@@ -43,7 +44,7 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     if (!claimed) return;
     try {
       await bot.sendMessage(Number(order.payerId),
-        `Оплачено ${order.amount} ⭐. SteamID: ${order.steamId}\nДобавлено ${durationLabel(order.durationMs)} VIP.\nДействует до ${order.vipEndDate.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} МСК. Синхронизация с серверами выполняется автоматически.`);
+        `Спасибо за поддержку Русского Народного Сервера! Получено ${order.amount} ⭐.\nSteamID: ${order.steamId}\nВ благодарность добавлено ${durationLabel(order.durationMs)} VIP.\nДействует до ${order.vipEndDate.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} МСК. Синхронизация с серверами выполняется автоматически.`);
       await payments.orders.updateOne({ _id: order._id }, { $set: { notifiedAt: new Date() }, $unset: { notificationLease: '' } });
     } catch (error) {
       await payments.orders.updateOne({ _id: order._id }, { $unset: { notificationLease: '' } });
@@ -72,9 +73,9 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     if (query.data.startsWith('stars_pay:')) {
       const order = await payments.accept(query.data.slice('stars_pay:'.length), chatId);
       if (!order) return bot.sendMessage(chatId, 'Этот счёт уже открыт или истёк. Для нового счёта нажмите /stars.');
-      return bot.sendInvoice(chatId, 'VIP Русского Народного Сервера',
-        `SteamID ${order.steamId}. VIP на ${durationLabel(order.durationMs)}. Действующий срок продлевается.`,
-        payments.payload(order), '', 'XTR', [{ label: 'VIP', amount: order.amount }], { start_parameter: 'stars_vip' });
+      return bot.sendInvoice(chatId, 'Поддержка РНС',
+        `Поддержка работы и развития игровых серверов. SteamID ${order.steamId}. В благодарность — ${durationLabel(order.durationMs)} VIP. Действующий срок продлевается.`,
+        payments.payload(order), '', 'XTR', [{ label: 'Поддержка проекта', amount: order.amount }], { start_parameter: 'stars_vip' });
     }
   }));
   bot.on('message', safe(async msg => {

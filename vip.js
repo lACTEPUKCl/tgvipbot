@@ -58,7 +58,7 @@ bot.onText(/\/start/, async (msg) => {
   await bot.sendMessage(chatId, "Выберите действие:", {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "⭐ VIP за звёзды · 280 ⭐ / 30 дней", callback_data: "stars_vip" }],
+        [{ text: "Поддержать проект ⭐", callback_data: "stars_vip" }],
         [{ text: "Поддержать проект", callback_data: "donate" }],
         [{ text: "🎁 VIP за бонусные баллы", callback_data: "bonus" }],
         [{ text: "🧐 Проверить VIP", callback_data: "check_vip" }],
