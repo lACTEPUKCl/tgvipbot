@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MongoClient } from 'mongodb';
 import { installStarsBot } from '../utils/starsBot.js';
+import { createHash } from 'node:crypto';
+import { resolveDiscordSupportLink } from '../utils/discordSupportLink.js';
 
 test('Telegram private-chat purchase flow uses the chosen SteamID, amount and receipt', {
   skip: !process.env.STARS_TEST_MONGO_URL,
@@ -21,8 +23,28 @@ test('Telegram private-chat purchase flow uses the chosen SteamID, amount and re
   try {
     const service = await installStarsBot(bot, db);
     const from = { id: 234567 }, chat = { id: 234567, type: 'private' };
-    await commands.find(row => row.regex.test('/stars')).handler({ from, chat });
-    await handlers.get('message')({ from, chat, text: '76561198000000002' });
+    const token = 'a'.repeat(43), discordId = '123456789012345678';
+    const steamId = '76561198000000002';
+    await service.players.insertOne({ _id: steamId, discordid: discordId });
+    await service.players.insertOne({ _id: '76561198000000003', telegramid: String(from.id) });
+    const linkId = createHash('sha256').update(token).digest('hex');
+    await db.collection('telegramSupportLinks').insertOne({ _id: linkId, discordId, steamId, expiresAt: new Date(Date.now() + 60000) });
+    const start = `/start support_${token}`;
+    const command = commands.find(row => row.regex.test(start));
+    await command.handler({ from, chat }, start.match(command.regex));
+    assert.equal(messages.length, 1);
+    assert.match(messages[0][1], new RegExp(steamId));
+    assert.doesNotMatch(messages[0][1], /76561198000000003/);
+    assert.equal(await resolveDiscordSupportLink(db, token, from.id + 1), null);
+    assert.equal(await resolveDiscordSupportLink(db, 'b'.repeat(43), from.id), null);
+    await db.collection('telegramSupportLinks').updateOne({ _id: linkId }, { $set: { expiresAt: new Date(0) } });
+    assert.equal(await resolveDiscordSupportLink(db, token, from.id), null);
+    await db.collection('telegramSupportLinks').updateOne({ _id: linkId }, { $set: { expiresAt: new Date(Date.now() + 60000) } });
+    await service.players.updateOne({ _id: steamId }, { $set: { discordid: '123456789012345679' } });
+    assert.equal(await resolveDiscordSupportLink(db, token, from.id), null);
+    await service.players.updateOne({ _id: steamId }, { $set: { discordid: discordId } });
+    assert.equal((await service.players.findOne({ _id: steamId })).telegramid, undefined);
+    // Continue the actual deep-link flow through payment and VIP delivery.
     await handlers.get('message')({ from, chat, text: '420' });
     const confirm = messages.at(-1);
     assert.match(confirm[1], /76561198000000002/);

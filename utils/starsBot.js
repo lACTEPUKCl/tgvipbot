@@ -1,4 +1,5 @@
 import { createStarsPayments, durationLabel, validSteamId, MIN_STARS } from './starsPayments.js';
+import { resolveDiscordSupportLink } from './discordSupportLink.js';
 
 const SUPPORT = 'https://discord.gg/rn-server';
 const TERMS = 'Поддержка Русского Народного Сервера\n\nВ благодарность за поддержку начисляется VIP. Минимальная сумма поддержки — 350 ⭐. В благодарность начисляется 37 дней 12 часов VIP. Срок пропорционален сумме, остаток времени сохраняется. Действующий VIP продлевается с даты окончания.\n\nПеред переводом проверьте SteamID. VIP получит указанный аккаунт. После подтверждения перевода VIP начисляется автоматически, синхронизация с серверами обычно занимает до минуты.\n\nПо вопросам переводов и возврата используйте /paysupport. Поддержка Telegram не обслуживает покупки этого бота.';
@@ -55,6 +56,14 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     }
   }
   bot.onText(/^\/stars(?:@\w+)?(?:\s|$)/, safe(begin));
+  bot.onText(/^\/start(?:@\w+)?\s+support_(\S+)\s*$/, safe(async (msg, match) => {
+    if (msg.chat.type !== 'private' || msg.chat.id !== msg.from?.id) return;
+    onBegin(msg.chat.id);
+    waiting.delete(msg.chat.id);
+    const steamId = await resolveDiscordSupportLink(db, match[1], msg.from.id);
+    if (!steamId) return bot.sendMessage(msg.chat.id, 'Ссылка истекла или уже открыта другим пользователем. Получите новую кнопку Telegram Stars в Discord.');
+    await chooseAmount(msg.chat.id, steamId);
+  }));
   bot.onText(/^\/terms(?:@\w+)?(?:\s|$)/, safe(msg => bot.sendMessage(msg.chat.id, TERMS)));
   bot.onText(/^\/(?:paysupport|support)(?:@\w+)?(?:\s|$)/, safe(msg => bot.sendMessage(msg.chat.id,
     `Поддержка оплаты и возвраты: ${SUPPORT}\nСоздайте тикет и приложите квитанцию Telegram и SteamID. Поддержка Telegram не обслуживает покупки этого бота.`)));

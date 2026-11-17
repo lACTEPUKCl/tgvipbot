@@ -45,7 +45,7 @@ async function sendDonationLink(chatId, actorId, steamId) {
   }
 }
 
-bot.onText(/\/start/, async (msg) => {
+bot.onText(/^\/start(?:@\w+)?\s*$/, async (msg) => {
   const chatId = msg.chat.id;
   await bot.sendMessage(chatId, vipText, {
     parse_mode: "HTML",
