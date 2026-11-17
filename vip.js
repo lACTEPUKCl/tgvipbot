@@ -19,21 +19,15 @@ let steamCollection;
 const waitForSteam = new Map();
 
 const vipText = `
-<b>Уважаемые игроки Русского Народного Сервера!</b>
+<b>Поддержите Русский Народный Сервер</b>
 
-Вы можете <b>добровольно сделать пожертвование</b> на развитие и поддержание наших игровых серверов.
+Вы можете добровольно поддержать работу и развитие наших игровых серверов любой суммой.
 
-<b>В знак признательности</b> за вашу поддержку мы можем предоставить вам <b>VIP статус</b>.
+Спасибо всем, кто помогает проекту оставаться доступным для игроков!
 
-<b>VIP статус:</b>
-• приоритетный доступ на сервер — без ожидания;
-• право голоса за выбор карты.
-
-<b>Пожертвования:</b>
-• <b>300 рублей</b> — VIP на 1 месяц;
-• <b>2000 рублей</b> — клановый VIP на 1 месяц (до 30 человек).
-
-<b>Всё является пожертвованием!</b> VIP — лишь благодарность за поддержку.
+В благодарность за поддержку начисляется <b>VIP</b> на наших игровых серверах.
+• <b>300 ₽ поддержки — 30 дней VIP.</b> Действующий срок продлевается.
+• <b>2000 ₽ поддержки — клановый VIP на месяц</b>, до 30 человек в клане.
 
 <b>Бонусная система:</b>
 • 1 балл — 1 минута на обычной карте, 2 балла — 1 минута на seed-карте.
@@ -49,7 +43,7 @@ async function sendDonationLink(chatId, actorId, steamId) {
   try {
     const prepared = await prepareDonationLink(mongo.db("SquadJS"), { platform: "telegram", actorId, steamId, configuredUrl: process.env.DONATION_LINK });
     await bot.sendMessage(chatId, `Ваш SteamID: ${steamId}\nСкопируйте его. На DonatePay полностью очистите поле «Сообщение стримеру» и вставьте этот SteamID. Перед оплатой проверьте: в поле должен быть только ваш ID. Сайт может показывать чужой ID — не оставляйте его.`, {
-      reply_markup: { inline_keyboard: [[{ text: "Оформить донат", url: prepared.url }]] }
+      reply_markup: { inline_keyboard: [[{ text: "Поддержать проект", url: prepared.url }]] }
     });
     await prepared.delivered();
   } catch (error) {
@@ -65,7 +59,7 @@ bot.onText(/\/start/, async (msg) => {
     reply_markup: {
       inline_keyboard: [
         [{ text: "⭐ VIP за звёзды · 280 ⭐ / 30 дней", callback_data: "stars_vip" }],
-        [{ text: "💎 VIP статус за донат", callback_data: "donate" }],
+        [{ text: "Поддержать проект", callback_data: "donate" }],
         [{ text: "🎁 VIP за бонусные баллы", callback_data: "bonus" }],
         [{ text: "🧐 Проверить VIP", callback_data: "check_vip" }],
       ],
