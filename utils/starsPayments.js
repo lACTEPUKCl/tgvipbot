@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 export const STARS_PRICE = 280;
+export const MIN_STARS = 350;
 export const VIP_DAYS = 30;
 const DAY = 86400000;
 const PREFIX = 'rns-stars:';
@@ -30,8 +31,10 @@ export function createStarsPayments(db) {
   }
   async function createOrder(payerId, steamId, amount) {
     if (!validSteamId(steamId) || !/^\d+$/.test(String(payerId))) throw new Error('INVALID_IDENTITY');
+    const durationMs = vipDuration(amount);
+    if (amount < MIN_STARS) throw new Error('INVALID_AMOUNT');
     const order = { _id: randomUUID(), payerId: String(payerId), steamId, amount,
-      durationMs: vipDuration(amount), currency: 'XTR', status: 'draft', createdAt: new Date(),
+      durationMs, currency: 'XTR', status: 'draft', createdAt: new Date(),
       expiresAt: new Date(Date.now() + DAY) };
     // A recipient can be new to our servers. Payment must still be recoverable.
     await players.updateOne({ _id: steamId }, { $setOnInsert: { createdAt: new Date() } }, { ...durable, upsert: true });

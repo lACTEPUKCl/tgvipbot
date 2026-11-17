@@ -1,7 +1,7 @@
-import { createStarsPayments, durationLabel, validSteamId } from './starsPayments.js';
+import { createStarsPayments, durationLabel, validSteamId, MIN_STARS } from './starsPayments.js';
 
 const SUPPORT = 'https://discord.gg/rn-server';
-const TERMS = 'Поддержка Русского Народного Сервера\n\nВ благодарность за поддержку начисляется VIP. 280 ⭐ поддержки — 30 дней VIP. Срок пропорционален сумме, остаток времени сохраняется. Действующий VIP продлевается с даты окончания.\n\nПеред переводом проверьте SteamID. VIP получит указанный аккаунт. После подтверждения перевода VIP начисляется автоматически, синхронизация с серверами обычно занимает до минуты.\n\nПо вопросам переводов и возврата используйте /paysupport. Поддержка Telegram не обслуживает покупки этого бота.';
+const TERMS = 'Поддержка Русского Народного Сервера\n\nВ благодарность за поддержку начисляется VIP. Минимальная сумма поддержки — 350 ⭐. В благодарность начисляется 37 дней 12 часов VIP. Срок пропорционален сумме, остаток времени сохраняется. Действующий VIP продлевается с даты окончания.\n\nПеред переводом проверьте SteamID. VIP получит указанный аккаунт. После подтверждения перевода VIP начисляется автоматически, синхронизация с серверами обычно занимает до минуты.\n\nПо вопросам переводов и возврата используйте /paysupport. Поддержка Telegram не обслуживает покупки этого бота.';
 
 export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
   const payments = createStarsPayments(db);
@@ -13,9 +13,9 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
   });
   async function chooseAmount(chatId, steamId) {
     waiting.set(chatId, { mode: 'amount', steamId });
-    await bot.sendMessage(chatId, `Поддержка звёздами ⭐\n\nSteamID: ${steamId}\n\nВыберите сумму или отправьте другое целое число звёзд.`, {
+    await bot.sendMessage(chatId, `Поддержка звёздами ⭐\n\nSteamID: ${steamId}\n\nВыберите сумму или отправьте другое целое число звёзд. Минимум ${MIN_STARS} ⭐.`, {
       reply_markup: { inline_keyboard: [
-        [280, 560, 840].map(amount => ({ text: `${amount} ⭐`, callback_data: `stars_amount:${steamId}:${amount}` })),
+        [350, 700, 1050].map(amount => ({ text: `${amount} ⭐`, callback_data: `stars_amount:${steamId}:${amount}` })),
         [{ text: 'Другой SteamID', callback_data: 'stars_steam' }],
       ] },
     });
@@ -29,6 +29,9 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     await bot.sendMessage(msg.chat.id, 'Отправьте SteamID64 — 17 цифр. Перед переводом его можно будет проверить.');
   }
   async function confirm(chatId, steamId, amount) {
+    if (Number.isSafeInteger(amount) && amount < MIN_STARS) {
+      return bot.sendMessage(chatId, `Минимальная сумма — ${MIN_STARS} ⭐. Выберите другую сумму через /stars.`);
+    }
     const order = await payments.createOrder(chatId, steamId, amount);
     waiting.delete(chatId);
     await bot.sendMessage(chatId, `Поддержка проекта ⭐\n\nSteamID: ${steamId}\nСумма: ${amount} ⭐\n\nПроверьте данные перед переводом.`, {
@@ -89,8 +92,8 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
       if (!validSteamId(text)) return bot.sendMessage(msg.chat.id, 'Нужен SteamID64 — 17 цифр, начинается с 7656119.');
       return chooseAmount(msg.chat.id, text);
     }
-    if (!/^\d{1,7}$/.test(text) || Number(text) < 1 || Number(text) > 1000000) {
-      return bot.sendMessage(msg.chat.id, 'Введите целое число звёзд от 1 до 1000000.');
+    if (!/^\d{1,7}$/.test(text) || Number(text) < MIN_STARS || Number(text) > 1000000) {
+      return bot.sendMessage(msg.chat.id, `Введите целое число звёзд от ${MIN_STARS} до 1000000.`);
     }
     await confirm(msg.chat.id, state.steamId, Number(text));
   }));
