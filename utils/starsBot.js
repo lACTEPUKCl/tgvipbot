@@ -75,7 +75,7 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
       const order = await payments.accept(query.data.slice('stars_pay:'.length), chatId);
       if (!order) return bot.sendMessage(chatId, 'Этот счёт уже открыт или истёк. Для нового счёта нажмите /stars.');
       return bot.sendInvoice(chatId, 'Поддержка РНС',
-        `Поддержка работы и развития игровых серверов. SteamID ${order.steamId}. В благодарность — ${durationLabel(order.durationMs)} VIP. Действующий срок продлевается.`,
+        'Добровольная поддержка работы и развития игровых серверов.',
         payments.payload(order), '', 'XTR', [{ label: 'Поддержка проекта', amount: order.amount }], { start_parameter: 'stars_vip' });
     }
   }));
