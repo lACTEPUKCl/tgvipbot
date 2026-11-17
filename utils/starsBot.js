@@ -31,8 +31,9 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
   async function confirm(chatId, steamId, amount) {
     const order = await payments.createOrder(chatId, steamId, amount);
     waiting.delete(chatId);
-    await bot.sendMessage(chatId, `Проверьте SteamID: ${steamId}\nСумма: ${amount} ⭐\nСрок VIP: ${durationLabel(order.durationMs)}\n\n${TERMS}`, {
-      reply_markup: { inline_keyboard: [[{ text: 'Согласен с условиями · Поддержать ⭐', callback_data: `stars_pay:${order._id}` }],
+    await bot.sendMessage(chatId, `Поддержка проекта ⭐\n\nSteamID: ${steamId}\nСумма: ${amount} ⭐\n\nПроверьте данные перед переводом.`, {
+      reply_markup: { inline_keyboard: [[{ text: 'Принять условия и поддержать ⭐', callback_data: `stars_pay:${order._id}` }],
+        [{ text: 'Условия поддержки', callback_data: 'stars_terms' }],
         [{ text: 'Изменить данные', callback_data: 'stars_vip' }]] },
     });
   }
@@ -61,9 +62,10 @@ export async function installStarsBot(bot, db, { onBegin = () => {} } = {}) {
     if (!query.data?.startsWith('stars_')) { waiting.delete(chatId); return; }
     onBegin(chatId);
     if (query.data === 'stars_vip') return begin({ chat: query.message.chat, from: query.from });
+    if (query.data === 'stars_terms') return bot.sendMessage(chatId, TERMS);
     if (query.data === 'stars_steam') {
       waiting.set(chatId, { mode: 'steam' });
-      return bot.sendMessage(chatId, 'Отправьте SteamID64 получателя VIP — 17 цифр.');
+      return bot.sendMessage(chatId, 'Отправьте SteamID64 — 17 цифр.');
     }
     if (query.data.startsWith('stars_amount:')) {
       const [, steamId, rawAmount] = query.data.split(':');

@@ -27,7 +27,9 @@ test('Telegram private-chat purchase flow uses the chosen SteamID, amount and re
     const confirm = messages.at(-1);
     assert.match(confirm[1], /76561198000000002/);
     assert.match(confirm[1], /420 ⭐/);
-    assert.match(confirm[1], /45 дн/);
+    assert.doesNotMatch(confirm[1], /VIP|дн|280/);
+    await handlers.get('callback_query')({ from, message: { chat }, data: 'stars_terms' });
+    assert.match(messages.at(-1)[1], /280 ⭐ поддержки — 30 дней VIP/);
     const callback = confirm[2].reply_markup.inline_keyboard[0][0].callback_data;
     await handlers.get('callback_query')({ from: { id: 999 }, message: { chat }, data: callback });
     assert.equal(invoices.length, 0);
